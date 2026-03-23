@@ -25,6 +25,7 @@ def translate_chunk(text: str, retries: int = 3) -> str:
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": text},
                 ],
+                options={"timeout": 120},
             )
             return response.message.content.strip()
         except Exception as e:

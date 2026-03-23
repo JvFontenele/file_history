@@ -3,6 +3,8 @@ from pathlib import Path
 from fastapi import UploadFile
 from ..config import settings
 
+CHUNK_SIZE = 1024 * 1024  # 1 MB
+
 
 def page_image_url(image_path: str) -> str:
     """Convert an absolute image_path to a URL served by the /pages static mount."""
@@ -37,8 +39,7 @@ async def save_upload(file: UploadFile, book_uuid: str) -> str:
     upload_dir.mkdir(parents=True, exist_ok=True)
     dest = upload_dir / f"original{ext}"
     with open(dest, "wb") as f:
-        content = await file.read()
-        f.write(content)
+        shutil.copyfileobj(file.file, f, length=CHUNK_SIZE)
     return str(dest)
 
 
@@ -48,8 +49,7 @@ async def save_page_image(file: UploadFile, book_uuid: str, page_num: int) -> st
     pages_dir.mkdir(parents=True, exist_ok=True)
     dest = pages_dir / f"page_{page_num:04d}{ext}"
     with open(dest, "wb") as f:
-        content = await file.read()
-        f.write(content)
+        shutil.copyfileobj(file.file, f, length=CHUNK_SIZE)
     return str(dest)
 
 
