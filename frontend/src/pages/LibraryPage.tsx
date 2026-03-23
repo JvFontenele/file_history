@@ -23,38 +23,42 @@ export default function LibraryPage() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Top bar */}
-      <header className="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center gap-4 shrink-0">
+      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex flex-wrap items-center gap-2 shrink-0">
         <h1 className="text-lg font-bold text-indigo-400 shrink-0">📚 Tradutor</h1>
-        <input
-          type="text"
-          placeholder="Buscar título ou autor..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-indigo-500"
-        />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
-        >
-          <option value="">Todos os status</option>
-          <option value="pending">Pendente</option>
-          <option value="translating">Traduzindo</option>
-          <option value="done">Traduzido</option>
-          <option value="error">Erro</option>
-        </select>
-        <button
-          onClick={() => setModal("upload")}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors shrink-0"
-        >
-          + Livro / Arquivo
-        </button>
-        <button
-          onClick={() => setModal("hq")}
-          className="bg-purple-700 hover:bg-purple-600 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors shrink-0"
-        >
-          + Nova HQ
-        </button>
+        <div className="flex gap-2 ml-auto shrink-0">
+          <button
+            onClick={() => setModal("upload")}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            + Livro
+          </button>
+          <button
+            onClick={() => setModal("hq")}
+            className="bg-purple-700 hover:bg-purple-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            + HQ
+          </button>
+        </div>
+        <div className="flex gap-2 w-full">
+          <input
+            type="text"
+            placeholder="Buscar título ou autor..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none shrink-0"
+          >
+            <option value="">Todos</option>
+            <option value="pending">Pendente</option>
+            <option value="translating">Traduzindo</option>
+            <option value="done">Traduzido</option>
+            <option value="error">Erro</option>
+          </select>
+        </div>
       </header>
 
       {/* Content */}

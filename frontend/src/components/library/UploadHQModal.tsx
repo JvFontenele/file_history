@@ -99,7 +99,7 @@ export default function UploadHQModal({ onClose }: Props) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
               type="text"
               placeholder="Título (obrigatório)"
@@ -147,7 +147,7 @@ export default function UploadHQModal({ onClose }: Props) {
           {pages.length > 0 && (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={pages.map((p) => p.id)} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
                   {pages.map((item, i) => (
                     <SortablePage key={item.id} item={item} index={i} />
                   ))}

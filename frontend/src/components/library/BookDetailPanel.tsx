@@ -46,10 +46,16 @@ export default function BookDetailPanel({ book, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 w-96 bg-gray-900 border-l border-gray-800 shadow-2xl z-40 flex flex-col overflow-y-auto">
+    <>
+      {/* Mobile backdrop */}
+      <div
+        className="fixed inset-0 bg-black/50 z-30 sm:hidden"
+        onClick={onClose}
+      />
+    <div className="fixed inset-y-0 right-0 w-full sm:w-96 bg-gray-900 border-l border-gray-800 shadow-2xl z-40 flex flex-col overflow-y-auto">
       <div className="flex items-center justify-between p-4 border-b border-gray-800">
         <h2 className="font-semibold truncate pr-2">{book.title}</h2>
-        <button onClick={onClose} className="text-gray-400 hover:text-white shrink-0">✕</button>
+        <button onClick={onClose} className="text-gray-400 hover:text-white p-1 shrink-0">✕</button>
       </div>
 
       {/* Cover */}
@@ -172,5 +178,6 @@ export default function BookDetailPanel({ book, onClose }: Props) {
         </button>
       </div>
     </div>
+    </>
   );
 }
