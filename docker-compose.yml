@@ -1,10 +1,12 @@
 services:
   ollama:
     image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
+    container_name: jfile-ollama
+    restart: unless-stopped
     volumes:
       - ollama_data:/root/.ollama
+    networks:
+      - internal
     # Para usar GPU NVIDIA, descomente as linhas abaixo:
     # deploy:
     #   resources:
@@ -16,34 +18,36 @@ services:
 
   backend:
     build: ./backend
-    ports:
-      - "8000:8000"
+    container_name: jfile-backend
+    restart: unless-stopped
     volumes:
-      - ./backend:/app
       - uploads_data:/app/uploads
       - covers_data:/app/covers
       - pages_data:/app/pages
       - db_data:/app/data
     env_file:
       - .env
-    environment:
-      - DATABASE_URL=sqlite:////app/data/translator.db
-      - OLLAMA_URL=http://ollama:11434
-      - OLLAMA_MODEL=translategemma
     depends_on:
       - ollama
+    networks:
+      - internal
 
   frontend:
     build: ./frontend
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_URL=http://localhost:8000
+    container_name: jfile-frontend
+    restart: unless-stopped
     depends_on:
       - backend
+    networks:
+      - internal
+      - jv-web
+
+networks:
+  internal:
+    driver: bridge
+  jv-web:
+    external: true
+    name: jv-web
 
 volumes:
   ollama_data:
