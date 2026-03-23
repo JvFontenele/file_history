@@ -1,4 +1,3 @@
-import shutil
 from pathlib import Path
 from datetime import datetime
 import fitz  # pymupdf
@@ -26,7 +25,7 @@ class PDFExtractor(BaseExtractor):
     def _extract_chapters(self, doc: fitz.Document, book: Book) -> None:
         chapters = []
         current_title = "Início"
-        current_text_blocks = []
+        current_text_blocks: list[str] = []
         chapter_index = 0
         toc = doc.get_toc()
 
@@ -81,35 +80,83 @@ class PDFExtractor(BaseExtractor):
         self.db.commit()
 
     def _render_pages(self, doc: fitz.Document, book: Book) -> None:
-        """Render each PDF page as a JPEG thumbnail and create Page records."""
+        """Render each page as JPEG and extract inline images, building structured content."""
         pages_dir = Path(settings.pages_dir) / book.uuid
         pages_dir.mkdir(parents=True, exist_ok=True)
 
-        # Scale: 1.0 gives ~72dpi; use 1.5 for a readable preview (~108dpi)
         matrix = fitz.Matrix(1.5, 1.5)
 
         for page_num in range(len(doc)):
             page = doc[page_num]
+
+            # Full-page render for the viewer background
             img_path = pages_dir / f"page_{page_num + 1:04d}.jpg"
             try:
                 pix = page.get_pixmap(matrix=matrix)
                 pix.save(str(img_path), jpg_quality=75)
             except Exception:
-                continue
+                img_path = None
 
-            text = page.get_text("text").strip()
+            # Build structured content: text blocks interspersed with [IMG:...] markers
+            original_text = self._extract_structured_content(doc, page, page_num + 1, pages_dir)
 
             page_record = Page(
                 book_id=self.book_id,
                 page_number=page_num + 1,
-                image_path=str(img_path),
-                original_text=text or None,
+                image_path=str(img_path) if img_path else None,
+                original_text=original_text or None,
                 translation_status="pending",
             )
             self.db.add(page_record)
 
         book.total_pages = len(doc)
         self.db.commit()
+
+    def _extract_structured_content(
+        self,
+        doc: fitz.Document,
+        page: fitz.Page,
+        page_num: int,
+        pages_dir: Path,
+    ) -> str:
+        """
+        Returns page text with [IMG:uuid/filename] markers inserted at the position
+        of each inline image, preserving reading order (top-to-bottom, left-to-right).
+        """
+        book = self.db.get(Book, self.book_id)
+        blocks = page.get_text("dict")["blocks"]
+        # Sort by vertical then horizontal position
+        blocks = sorted(blocks, key=lambda b: (round(b["bbox"][1] / 10), b["bbox"][0]))
+
+        parts: list[str] = []
+        img_idx = 0
+
+        for block in blocks:
+            if block["type"] == 0:  # text block
+                lines = []
+                for line in block.get("lines", []):
+                    line_text = "".join(span["text"] for span in line.get("spans", []))
+                    if line_text.strip():
+                        lines.append(line_text)
+                text = "\n".join(lines).strip()
+                if text:
+                    parts.append(text)
+
+            elif block["type"] == 1:  # inline image block
+                raw = block.get("image")
+                if not raw:
+                    continue
+                ext = block.get("ext", "jpg")
+                img_name = f"page_{page_num:04d}_img_{img_idx}.{ext}"
+                out_path = pages_dir / img_name
+                try:
+                    out_path.write_bytes(raw)
+                    parts.append(f"[IMG:{book.uuid}/{img_name}]")
+                    img_idx += 1
+                except Exception:
+                    pass
+
+        return "\n\n".join(parts)
 
     def _extract_cover(self, doc: fitz.Document, book: Book) -> None:
         if len(doc) == 0:

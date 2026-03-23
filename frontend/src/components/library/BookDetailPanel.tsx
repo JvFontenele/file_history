@@ -15,6 +15,7 @@ export default function BookDetailPanel({ book, onClose }: Props) {
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [translationMode, setTranslationMode] = useState<"chapter" | "page">("chapter");
   const [title, setTitle] = useState(book.title);
   const [author, setAuthor] = useState(book.author ?? "");
   const [tagInput, setTagInput] = useState(book.tags.map((t) => t.name).join(", "));
@@ -124,13 +125,31 @@ export default function BookDetailPanel({ book, onClose }: Props) {
             </button>
           )}
           {book.translation_status !== "translating" && book.translation_status !== "extracting" && (
-            <button
-              onClick={() => start({ scope: "full" })}
-              disabled={starting}
-              className="w-full bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-lg"
-            >
-              {book.translation_status === "done" ? "Retraduzir" : "Iniciar tradução"}
-            </button>
+            <>
+              {book.format === "pdf" && (
+                <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs">
+                  <button
+                    onClick={() => setTranslationMode("chapter")}
+                    className={`flex-1 py-1.5 transition-colors ${translationMode === "chapter" ? "bg-gray-600 text-white" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
+                  >
+                    Por capítulo
+                  </button>
+                  <button
+                    onClick={() => setTranslationMode("page")}
+                    className={`flex-1 py-1.5 transition-colors ${translationMode === "page" ? "bg-gray-600 text-white" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
+                  >
+                    Por página
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={() => start({ scope: "full", mode: translationMode })}
+                disabled={starting}
+                className="w-full bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-lg"
+              >
+                {book.translation_status === "done" ? "Retraduzir" : "Iniciar tradução"}
+              </button>
+            </>
           )}
         </div>
 

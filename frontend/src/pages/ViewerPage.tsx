@@ -5,11 +5,37 @@ import { useBook, useChapters, usePages } from "../hooks/useViewer";
 import { useViewerStore } from "../store/viewerStore";
 import api from "../api/client";
 
+const IMG_MARKER = /(\[IMG:[^\]]+\])/;
+
+function RichContent({ text }: { text: string }) {
+  const parts = text.split(IMG_MARKER);
+  return (
+    <>
+      {parts.map((part, i) => {
+        const match = part.match(/\[IMG:([^\]]+)\]/);
+        if (match) {
+          return (
+            <img
+              key={i}
+              src={`/pages/${match[1]}`}
+              alt=""
+              className="max-w-full h-auto my-3 rounded"
+              loading="lazy"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+          );
+        }
+        return <span key={i} className="whitespace-pre-wrap">{part}</span>;
+      })}
+    </>
+  );
+}
+
 export default function ViewerPage() {
   const { bookUuid } = useParams<{ bookUuid: string }>();
   const navigate = useNavigate();
   const { data: book } = useBook(bookUuid!);
-  const isImageBook = book && ["image", "image_collection", "cbz", "cbr"].includes(book.format);
+  const isImageBook = book && ["pdf", "image", "image_collection", "cbz", "cbr"].includes(book.format);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -158,18 +184,19 @@ export default function ViewerPage() {
             {showOriginal && (
               <div className={`overflow-y-auto p-4 sm:p-6 ${showTranslated ? "sm:w-1/2 border-b sm:border-b-0 sm:border-r border-gray-800" : "w-full"}`}>
                 <p className="text-xs text-gray-500 uppercase font-medium mb-3">Original</p>
-                <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
-                  {content?.original_text ?? "Sem texto"}
+                <div className="text-sm text-gray-300 leading-relaxed">
+                  {content?.original_text ? <RichContent text={content.original_text} /> : "Sem texto"}
                 </div>
               </div>
             )}
             {showTranslated && (
               <div className={`overflow-y-auto p-4 sm:p-6 ${showOriginal ? "sm:w-1/2" : "w-full"}`}>
                 <p className="text-xs text-green-500 uppercase font-medium mb-3">Tradução (pt-BR)</p>
-                <div className="text-sm text-gray-100 leading-relaxed whitespace-pre-wrap">
-                  {content?.translated_text ?? (
-                    <span className="text-gray-600 italic">Ainda não traduzido</span>
-                  )}
+                <div className="text-sm text-gray-100 leading-relaxed">
+                  {content?.translated_text
+                    ? <RichContent text={content.translated_text} />
+                    : <span className="text-gray-600 italic">Ainda não traduzido</span>
+                  }
                 </div>
               </div>
             )}

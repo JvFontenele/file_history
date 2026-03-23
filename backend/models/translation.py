@@ -11,6 +11,7 @@ class TranslationJob(Base):
     book_id = Column(Integer, ForeignKey("books.id", ondelete="CASCADE"), nullable=False)
     scope = Column(String(20), nullable=False)  # full, chapter, page
     scope_id = Column(Integer)  # chapter.id or page.id
+    mode = Column(String(20), nullable=False, server_default="chapter")  # chapter, page
     status = Column(String(20), nullable=False, default="queued")  # queued, running, done, cancelled, error
     progress_current = Column(Integer, default=0)
     progress_total = Column(Integer, default=0)

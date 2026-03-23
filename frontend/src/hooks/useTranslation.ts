@@ -25,8 +25,8 @@ export function useJobs(bookUuid: string) {
 export function useStartTranslation(bookUuid: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ scope, scopeId }: { scope?: string; scopeId?: number }) =>
-      startTranslation(bookUuid, scope ?? "full", scopeId),
+    mutationFn: ({ scope, scopeId, mode }: { scope?: string; scopeId?: number; mode?: string }) =>
+      startTranslation(bookUuid, scope ?? "full", scopeId, mode ?? "chapter"),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["book", bookUuid] });
       qc.invalidateQueries({ queryKey: ["jobs", bookUuid] });

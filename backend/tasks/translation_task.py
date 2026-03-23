@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from sqlalchemy.orm import Session
 from ..database import SessionLocal
@@ -6,6 +7,8 @@ from ..models.translation import TranslationJob
 from ..services.chunker import chunk_text
 from ..services.translator import translate_chunk
 from ..config import settings
+
+_IMG_RE = re.compile(r"(\[IMG:[^\]]+\])")
 
 
 def _is_cancelled(db: Session, job_id: int) -> bool:
@@ -28,7 +31,11 @@ def run_translation(job_id: int) -> None:
         book.translation_status = "translating"
         db.commit()
 
-        if book.format in ("pdf", "epub"):
+        if book.format == "epub":
+            _translate_chapters(db, job, book)
+        elif book.format == "pdf" and job.mode == "page":
+            _translate_pages(db, job, book)
+        elif book.format == "pdf":
             _translate_chapters(db, job, book)
         else:
             _translate_pages(db, job, book)
@@ -132,15 +139,23 @@ def _translate_pages(db: Session, job: TranslationJob, book: Book) -> None:
             continue
 
         translated_parts = []
-        for chunk in chunks:
-            if _is_cancelled(db, job.id):
-                return
-            translated = translate_chunk(chunk)
-            translated_parts.append(translated)
-            completed += 1
-            job = db.get(TranslationJob, job.id)
-            job.progress_current = completed
-            db.commit()
+        # Split by [IMG:...] markers so images are preserved in translation output
+        segments = _IMG_RE.split(page.original_text or "")
+        for segment in segments:
+            if _IMG_RE.fullmatch(segment):
+                # Image marker — keep as-is
+                translated_parts.append(segment)
+                continue
+            seg_chunks = chunk_text(segment, settings.max_chunk_chars)
+            for chunk in seg_chunks:
+                if _is_cancelled(db, job.id):
+                    return
+                translated = translate_chunk(chunk)
+                translated_parts.append(translated)
+                completed += 1
+                job = db.get(TranslationJob, job.id)
+                job.progress_current = completed
+                db.commit()
 
         page.translated_text = "\n\n".join(translated_parts)
         page.translation_status = "done"

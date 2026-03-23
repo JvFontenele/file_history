@@ -25,6 +25,7 @@ def start_translation(
         book_id=book.id,
         scope=data.scope,
         scope_id=data.scope_id,
+        mode=data.mode,
         status="queued",
     )
     db.add(job)

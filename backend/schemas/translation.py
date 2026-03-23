@@ -8,6 +8,7 @@ class TranslationJobSchema(BaseModel):
     book_id: int
     scope: str
     scope_id: Optional[int]
+    mode: str
     status: str
     progress_current: int
     progress_total: int
@@ -19,5 +20,6 @@ class TranslationJobSchema(BaseModel):
 
 
 class StartTranslationSchema(BaseModel):
-    scope: str = "full"  # full, chapter, page
+    scope: str = "full"        # full, chapter, page
     scope_id: Optional[int] = None
+    mode: str = "chapter"      # chapter, page
