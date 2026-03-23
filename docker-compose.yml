@@ -1,0 +1,53 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # Para usar GPU NVIDIA, descomente as linhas abaixo:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - uploads_data:/app/uploads
+      - covers_data:/app/covers
+      - pages_data:/app/pages
+      - db_data:/app/data
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite:////app/data/translator.db
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=translategemma
+    depends_on:
+      - ollama
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+volumes:
+  ollama_data:
+  uploads_data:
+  covers_data:
+  pages_data:
+  db_data:
