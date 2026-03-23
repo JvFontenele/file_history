@@ -21,10 +21,10 @@ services:
     container_name: jfile-backend
     restart: unless-stopped
     volumes:
-      - uploads_data:/app/uploads
-      - covers_data:/app/covers
-      - pages_data:/app/pages
-      - db_data:/app/data
+      - uploads_data:/srv/app/uploads
+      - covers_data:/srv/app/covers
+      - pages_data:/srv/app/pages
+      - db_data:/srv/app/data
     env_file:
       - .env
     depends_on:
