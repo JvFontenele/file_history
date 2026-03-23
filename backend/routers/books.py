@@ -1,3 +1,4 @@
+import shutil
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -47,6 +48,69 @@ def _run_extraction(book_id: int, file_path: str, fmt: str):
             db.commit()
     finally:
         db.close()
+
+
+_CHUNK_TMP = Path("/tmp/book_chunks")
+
+
+@router.post("/upload/chunk")
+async def upload_chunk(
+    session_id: str = Form(...),
+    chunk_index: int = Form(...),
+    file: UploadFile = File(...),
+):
+    chunk_dir = _CHUNK_TMP / session_id
+    chunk_dir.mkdir(parents=True, exist_ok=True)
+    with open(chunk_dir / f"{chunk_index:06d}", "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    return {"ok": True}
+
+
+@router.post("/upload/finalize", response_model=BookSchema)
+async def finalize_upload(
+    session_id: str = Form(...),
+    filename: str = Form(...),
+    total_chunks: int = Form(...),
+    title: Optional[str] = Form(None),
+    author: Optional[str] = Form(None),
+    tags: list[str] = Form(default=[]),
+    db: Session = Depends(get_db),
+):
+    fmt = detect_format(filename)
+    if not fmt:
+        raise HTTPException(status_code=400, detail="Formato de arquivo não suportado.")
+
+    book = Book(
+        title=title or Path(filename).stem,
+        author=author,
+        format=fmt,
+        translation_status="pending",
+    )
+    db.add(book)
+    db.commit()
+    db.refresh(book)
+
+    chunk_dir = _CHUNK_TMP / session_id
+    ext = Path(filename).suffix.lower()
+    upload_dir = Path(settings.upload_dir) / book.uuid
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    dest = upload_dir / f"original{ext}"
+
+    with open(dest, "wb") as out:
+        for i in range(total_chunks):
+            with open(chunk_dir / f"{i:06d}", "rb") as chunk_f:
+                shutil.copyfileobj(chunk_f, out)
+    shutil.rmtree(str(chunk_dir), ignore_errors=True)
+
+    book.file_path = str(dest)
+    db.commit()
+    _apply_tags(db, book, tags)
+
+    t = threading.Thread(target=_run_extraction, args=(book.id, str(dest), fmt), daemon=True)
+    t.start()
+
+    db.refresh(book)
+    return book
 
 
 @router.post("/upload", response_model=BookSchema)

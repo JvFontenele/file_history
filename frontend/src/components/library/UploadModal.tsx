@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
-import { useUploadBook } from "../../hooks/useBooks";
+import { useQueryClient } from "@tanstack/react-query";
+import { uploadBookChunked } from "../../api/books";
 
 interface Props {
   onClose: () => void;
@@ -11,8 +12,11 @@ export default function UploadModal({ onClose }: Props) {
   const [author, setAuthor] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [dragging, setDragging] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { mutateAsync, isPending, error } = useUploadBook();
+  const qc = useQueryClient();
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -27,13 +31,19 @@ export default function UploadModal({ onClose }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) return;
-    const form = new FormData();
-    form.append("file", file);
-    form.append("title", title || file.name);
-    if (author) form.append("author", author);
-    tagInput.split(",").forEach((t) => { if (t.trim()) form.append("tags", t.trim()); });
-    await mutateAsync(form);
-    onClose();
+    setError(null);
+    setUploading(true);
+    setProgress(0);
+    try {
+      const tags = tagInput.split(",").map((t) => t.trim()).filter(Boolean);
+      await uploadBookChunked(file, { title: title || file.name, author, tags }, setProgress);
+      qc.invalidateQueries({ queryKey: ["books"] });
+      onClose();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao enviar arquivo.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -100,14 +110,30 @@ export default function UploadModal({ onClose }: Props) {
             className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
           />
 
-          {error && <p className="text-red-400 text-sm">{(error as Error).message}</p>}
+          {/* Barra de progresso */}
+          {uploading && (
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs text-gray-400">
+                <span>Enviando...</span>
+                <span>{progress}%</span>
+              </div>
+              <div className="w-full bg-gray-700 rounded-full h-2">
+                <div
+                  className="bg-indigo-500 h-2 rounded-full transition-all duration-200"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {error && <p className="text-red-400 text-sm">{error}</p>}
 
           <button
             type="submit"
-            disabled={!file || isPending}
+            disabled={!file || uploading}
             className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 rounded-lg transition-colors"
           >
-            {isPending ? "Enviando..." : "Adicionar à biblioteca"}
+            {uploading ? `Enviando... ${progress}%` : "Adicionar à biblioteca"}
           </button>
         </form>
       </div>

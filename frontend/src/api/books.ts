@@ -10,6 +10,39 @@ export const fetchBook = (uuid: string) =>
 export const uploadBook = (form: FormData) =>
   api.post<Book>("/api/books/upload", form).then((r) => r.data);
 
+const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB
+
+export async function uploadBookChunked(
+  file: File,
+  meta: { title?: string; author?: string; tags?: string[] },
+  onProgress?: (pct: number) => void,
+): Promise<Book> {
+  const sessionId = crypto.randomUUID();
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * CHUNK_SIZE;
+    const form = new FormData();
+    form.append("session_id", sessionId);
+    form.append("chunk_index", String(i));
+    form.append("file", file.slice(start, start + CHUNK_SIZE), file.name);
+    await api.post("/api/books/upload/chunk", form);
+    onProgress?.(Math.round(((i + 1) / totalChunks) * 90));
+  }
+
+  const form = new FormData();
+  form.append("session_id", sessionId);
+  form.append("filename", file.name);
+  form.append("total_chunks", String(totalChunks));
+  if (meta.title) form.append("title", meta.title);
+  if (meta.author) form.append("author", meta.author);
+  (meta.tags ?? []).forEach((t) => form.append("tags", t));
+
+  const res = await api.post<Book>("/api/books/upload/finalize", form);
+  onProgress?.(100);
+  return res.data;
+}
+
 export const createHQ = (form: FormData) =>
   api.post<Book>("/api/books/create-hq", form).then((r) => r.data);
 
