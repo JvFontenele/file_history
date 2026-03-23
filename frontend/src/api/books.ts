@@ -1,5 +1,5 @@
 import api from "./client";
-import type { Book, Chapter, Page } from "../types/book";
+import type { Book, Chapter, Page, PreviewPage } from "../types/book";
 
 export const fetchBooks = (params?: Record<string, string>) =>
   api.get<Book[]>("/api/books", { params }).then((r) => r.data);
@@ -33,3 +33,6 @@ export const fetchPage = (uuid: string, pageId: number) =>
 
 export const reorderPages = (uuid: string, order: number[]) =>
   api.patch(`/api/books/${uuid}/pages/reorder`, { order });
+
+export const fetchPreview = (uuid: string) =>
+  api.get<PreviewPage[]>(`/api/books/${uuid}/preview`).then((r) => r.data);

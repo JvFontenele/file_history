@@ -4,6 +4,16 @@ from fastapi import UploadFile
 from ..config import settings
 
 
+def page_image_url(image_path: str) -> str:
+    """Convert an absolute image_path to a URL served by the /pages static mount."""
+    try:
+        pages_dir = Path(settings.pages_dir).resolve()
+        rel = Path(image_path).resolve().relative_to(pages_dir)
+        return f"/pages/{rel.as_posix()}"
+    except (ValueError, TypeError):
+        return ""
+
+
 ALLOWED_FORMATS = {
     ".pdf": "pdf",
     ".epub": "epub",

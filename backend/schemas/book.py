@@ -54,6 +54,12 @@ class BookSchema(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class PreviewPageSchema(BaseModel):
+    page_number: int
+    image_url: Optional[str]
+    text_snippet: Optional[str]
+
+
 class BookUpdateSchema(BaseModel):
     title: Optional[str] = None
     author: Optional[str] = None

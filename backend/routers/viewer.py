@@ -1,9 +1,11 @@
+from pathlib import Path
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.book import Book, Chapter, Page
+from ..storage.file_store import page_image_url
 
 router = APIRouter(prefix="/api/viewer", tags=["viewer"])
 
@@ -72,7 +74,7 @@ def get_page_content(
             "id": page.id,
             "page_number": page.page_number,
             "translation_status": page.translation_status,
-            "image_url": f"/pages/{book_uuid}/{page.page_number}",
+            "image_url": page_image_url(page.image_path) if page.image_path else None,
         }
     }
     if side in ("original", "both"):

@@ -4,6 +4,7 @@ import type { Book } from "../../types/book";
 import StatusBadge from "./StatusBadge";
 import { useDeleteBook, useUpdateBook } from "../../hooks/useBooks";
 import { useStartTranslation, useJobs, useCancelJob } from "../../hooks/useTranslation";
+import PreviewModal from "./PreviewModal";
 
 interface Props {
   book: Book;
@@ -13,6 +14,7 @@ interface Props {
 export default function BookDetailPanel({ book, onClose }: Props) {
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [title, setTitle] = useState(book.title);
   const [author, setAuthor] = useState(book.author ?? "");
   const [tagInput, setTagInput] = useState(book.tags.map((t) => t.name).join(", "));
@@ -47,6 +49,13 @@ export default function BookDetailPanel({ book, onClose }: Props) {
 
   return (
     <>
+      {showPreview && (
+        <PreviewModal
+          bookUuid={book.uuid}
+          bookTitle={book.title}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
       {/* Mobile backdrop */}
       <div
         className="fixed inset-0 bg-black/50 z-30 sm:hidden"
@@ -106,6 +115,14 @@ export default function BookDetailPanel({ book, onClose }: Props) {
           >
             Abrir leitor
           </button>
+          {(book.total_pages ?? 0) > 0 && (
+            <button
+              onClick={() => setShowPreview(true)}
+              className="w-full bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium py-2 rounded-lg"
+            >
+              Preview de páginas
+            </button>
+          )}
           {book.translation_status !== "translating" && book.translation_status !== "extracting" && (
             <button
               onClick={() => start({ scope: "full" })}

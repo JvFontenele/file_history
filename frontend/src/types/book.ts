@@ -31,6 +31,12 @@ export interface Chapter {
   translated_text?: string;
 }
 
+export interface PreviewPage {
+  page_number: number;
+  image_url?: string;
+  text_snippet?: string;
+}
+
 export interface Page {
   id: number;
   page_number: number;

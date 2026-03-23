@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.book import Book, Chapter, Page, Tag
-from ..schemas.book import BookSchema, ChapterSchema, PageSchema, BookUpdateSchema, ReorderPagesSchema
-from ..storage.file_store import detect_format, save_upload, save_page_image, delete_book_files
+from ..schemas.book import BookSchema, ChapterSchema, PageSchema, BookUpdateSchema, ReorderPagesSchema, PreviewPageSchema
+from ..storage.file_store import detect_format, save_upload, save_page_image, delete_book_files, page_image_url
 from ..services.extraction.image_extractor import ImageExtractor, ocr_image
 from ..config import settings
 
@@ -207,6 +207,24 @@ def delete_book(uuid: str, db: Session = Depends(get_db)):
     delete_book_files(uuid)
     db.delete(book)
     db.commit()
+
+
+@router.get("/{uuid}/preview", response_model=list[PreviewPageSchema])
+def get_book_preview(uuid: str, db: Session = Depends(get_db)):
+    book = db.query(Book).filter(Book.uuid == uuid).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Livro não encontrado.")
+    result = []
+    for page in book.pages:
+        snippet = None
+        if page.original_text:
+            snippet = page.original_text[:300].strip()
+        result.append(PreviewPageSchema(
+            page_number=page.page_number,
+            image_url=page_image_url(page.image_path) if page.image_path else None,
+            text_snippet=snippet,
+        ))
+    return result
 
 
 @router.get("/{uuid}/chapters", response_model=list[ChapterSchema])

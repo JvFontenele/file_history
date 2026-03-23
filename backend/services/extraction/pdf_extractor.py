@@ -3,7 +3,7 @@ from pathlib import Path
 from datetime import datetime
 import fitz  # pymupdf
 from sqlalchemy.orm import Session
-from ...models.book import Book, Chapter
+from ...models.book import Book, Chapter, Page
 from ...config import settings
 from .base import BaseExtractor
 
@@ -16,7 +16,14 @@ class PDFExtractor(BaseExtractor):
         self.db.commit()
 
         self._extract_cover(doc, book)
+        self._extract_chapters(doc, book)
+        self._render_pages(doc, book)
 
+        book.updated_at = datetime.utcnow()
+        self.db.commit()
+        doc.close()
+
+    def _extract_chapters(self, doc: fitz.Document, book: Book) -> None:
         chapters = []
         current_title = "Início"
         current_text_blocks = []
@@ -24,7 +31,6 @@ class PDFExtractor(BaseExtractor):
         toc = doc.get_toc()
 
         if toc:
-            # Map page numbers to chapter titles from TOC
             toc_map = {entry[2] - 1: entry[1] for entry in toc}
             for page_num in range(len(doc)):
                 if page_num in toc_map:
@@ -40,7 +46,6 @@ class PDFExtractor(BaseExtractor):
             if current_text_blocks:
                 chapters.append((chapter_index, current_title, "\n\n".join(current_text_blocks)))
         else:
-            # No TOC: treat every 10 pages as one chapter
             PAGES_PER_CHAPTER = 10
             for page_num in range(len(doc)):
                 page = doc[page_num]
@@ -73,9 +78,38 @@ class PDFExtractor(BaseExtractor):
         book.total_chapters = len(chapters)
         book.total_chars = total_chars
         book.translation_status = "pending"
-        book.updated_at = datetime.utcnow()
         self.db.commit()
-        doc.close()
+
+    def _render_pages(self, doc: fitz.Document, book: Book) -> None:
+        """Render each PDF page as a JPEG thumbnail and create Page records."""
+        pages_dir = Path(settings.pages_dir) / book.uuid
+        pages_dir.mkdir(parents=True, exist_ok=True)
+
+        # Scale: 1.0 gives ~72dpi; use 1.5 for a readable preview (~108dpi)
+        matrix = fitz.Matrix(1.5, 1.5)
+
+        for page_num in range(len(doc)):
+            page = doc[page_num]
+            img_path = pages_dir / f"page_{page_num + 1:04d}.jpg"
+            try:
+                pix = page.get_pixmap(matrix=matrix)
+                pix.save(str(img_path), jpg_quality=75)
+            except Exception:
+                continue
+
+            text = page.get_text("text").strip()
+
+            page_record = Page(
+                book_id=self.book_id,
+                page_number=page_num + 1,
+                image_path=str(img_path),
+                original_text=text or None,
+                translation_status="pending",
+            )
+            self.db.add(page_record)
+
+        book.total_pages = len(doc)
+        self.db.commit()
 
     def _extract_cover(self, doc: fitz.Document, book: Book) -> None:
         if len(doc) == 0:
