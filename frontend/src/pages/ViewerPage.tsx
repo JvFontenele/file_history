@@ -7,25 +7,37 @@ import api from "../api/client";
 
 const IMG_MARKER = /(\[IMG:[^\]]+\])/;
 
-function RichContent({ text }: { text: string }) {
+function StructuredContent({ text }: { text: string }) {
   const parts = text.split(IMG_MARKER);
   return (
     <>
-      {parts.map((part, i) => {
-        const match = part.match(/\[IMG:([^\]]+)\]/);
-        if (match) {
+      {parts.flatMap((part, i) => {
+        const imgMatch = part.match(/\[IMG:([^\]]+)\]/);
+        if (imgMatch) {
           return (
             <img
               key={i}
-              src={`/pages/${match[1]}`}
+              src={`/pages/${imgMatch[1]}`}
               alt=""
-              className="max-w-full h-auto my-3 rounded"
+              className="max-w-full h-auto my-4 rounded"
               loading="lazy"
               onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
             />
           );
         }
-        return <span key={i} className="whitespace-pre-wrap">{part}</span>;
+        return part
+          .split(/\n\n+/)
+          .filter((p) => p.trim())
+          .map((para, j) => (
+            <p key={`${i}-${j}`} className="mb-4 leading-relaxed">
+              {para.split("\n").map((line, k, arr) => (
+                <span key={k}>
+                  {line}
+                  {k < arr.length - 1 && <br />}
+                </span>
+              ))}
+            </p>
+          ));
       })}
     </>
   );
@@ -44,10 +56,12 @@ export default function ViewerPage() {
     currentPageNumber,
     showOriginal,
     showTranslated,
+    showImage,
     setChapterIndex,
     setPageNumber,
     toggleOriginal,
     toggleTranslated,
+    toggleImage,
   } = useViewerStore();
 
   const { data: chapters } = useChapters(bookUuid!, !isImageBook);
@@ -104,6 +118,14 @@ export default function ViewerPage() {
         </button>
         <h1 className="text-sm font-semibold truncate flex-1">{book.title}</h1>
         <div className="flex items-center gap-2 text-xs shrink-0">
+          {isImageBook && (
+            <button
+              onClick={toggleImage}
+              className={`px-2 py-1.5 rounded ${showImage ? "bg-gray-600 text-white" : "bg-gray-800 text-gray-400"}`}
+            >
+              Imagem
+            </button>
+          )}
           <button
             onClick={toggleOriginal}
             className={`px-2 py-1.5 rounded ${showOriginal ? "bg-indigo-700 text-white" : "bg-gray-800 text-gray-400"}`}
@@ -168,7 +190,7 @@ export default function ViewerPage() {
 
         {/* Main content area */}
         <main className="flex-1 flex flex-col md:flex-row overflow-auto md:overflow-hidden">
-          {isImageBook && pageContent?.page?.image_url && (
+          {isImageBook && showImage && pageContent?.page?.image_url && (
             <div className="w-full md:w-1/2 md:border-r border-b md:border-b-0 border-gray-800 overflow-y-auto p-4 flex justify-center shrink-0">
               <img
                 src={pageContent.page.image_url}
@@ -185,7 +207,7 @@ export default function ViewerPage() {
               <div className={`overflow-y-auto p-4 sm:p-6 ${showTranslated ? "sm:w-1/2 border-b sm:border-b-0 sm:border-r border-gray-800" : "w-full"}`}>
                 <p className="text-xs text-gray-500 uppercase font-medium mb-3">Original</p>
                 <div className="text-sm text-gray-300 leading-relaxed">
-                  {content?.original_text ? <RichContent text={content.original_text} /> : "Sem texto"}
+                  {content?.original_text ? <StructuredContent text={content.original_text} /> : "Sem texto"}
                 </div>
               </div>
             )}
@@ -194,7 +216,7 @@ export default function ViewerPage() {
                 <p className="text-xs text-green-500 uppercase font-medium mb-3">Tradução (pt-BR)</p>
                 <div className="text-sm text-gray-100 leading-relaxed">
                   {content?.translated_text
-                    ? <RichContent text={content.translated_text} />
+                    ? <StructuredContent text={content.translated_text} />
                     : <span className="text-gray-600 italic">Ainda não traduzido</span>
                   }
                 </div>
